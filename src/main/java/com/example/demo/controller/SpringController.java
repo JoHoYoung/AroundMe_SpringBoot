@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,9 +34,6 @@ import java.util.Random;
 @EnableAutoConfiguration
 public class SpringController {
 
-//    @Autowired
-//    BCryptPasswordEncoder passwordEncoder;
-
     @Autowired
     BoardRepository BoardRepository;
 
@@ -44,6 +42,9 @@ public class SpringController {
 
     @Autowired
     public JavaMailSender emailSender;
+
+    @Autowired
+    BCryptPasswordEncoder Encoder;
 
 ///////////// 로그인, 로그아웃 + 세션 유지, 파괴 /////////////////////
     @RequestMapping(value = "/process/login", method = RequestMethod.GET)
@@ -56,7 +57,6 @@ public class SpringController {
 
         if(User.getPassword()==encPassword&&User.getAuth()==1)
         {
-
             session.setAttribute("user",User.getNickname());
             data.put("islogin",1);
             model.addAttribute("data",data);
@@ -94,6 +94,7 @@ public class SpringController {
     @RequestMapping(value = "/process/signup", method = RequestMethod.POST)
     public String Adduser(Model model,HttpServletRequest req)
     {
+
         String id=req.getParameter("id");
         String password=req.getParameter("password");
         String name=req.getParameter("name");
@@ -106,7 +107,7 @@ public class SpringController {
         String nickname=req.getParameter("nickname");
 
         char[] charaters = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9'};
-
+        String hashedpassword=Encoder.encode(password);
         StringBuffer sb = new StringBuffer();
 
         Random rn = new Random();
@@ -117,7 +118,7 @@ public class SpringController {
 
         String tokken = sb.toString();
 
-        UserRepository.save(new user_schema(id,password,name,age,created_at,sex,birth,phone,tokken,-1,email,nickname));
+        UserRepository.save(new user_schema(id,hashedpassword,name,age,created_at,sex,birth,phone,tokken,-1,email,nickname));
 
         MimeMessage msg=emailSender.createMimeMessage();
         MimeMessageHelper helper;
@@ -143,12 +144,12 @@ public class SpringController {
        user_schema User=UserRepository.findByid(id);
 
        String pivot=User.getTokken();
-       //UserRepository.Authuser(id);
         if(tokken.equals(pivot)) {
             UserRepository.Authuser(id);
         }
         return "login";
     }
+///////////////////////////////////////////////////////////////////////////////
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String Login(Model model) {

@@ -27,7 +27,7 @@ input[type="file"]:hover + .uploadimg{
 .cover {
     width: 100px;
     display: block;
-    background: url(pngclear.png);
+    background: url(../images/pngclear.png);
     height: 100px;
     transform: translate(0px,-100px);
     opacity:0;
