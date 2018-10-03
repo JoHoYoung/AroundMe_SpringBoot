@@ -32,7 +32,7 @@ import java.util.Random;
 
 @Controller
 @EnableAutoConfiguration
-public class SpringController {
+public class UserController {
 
     @Autowired
     BoardRepository BoardRepository;
@@ -47,13 +47,22 @@ public class SpringController {
     BCryptPasswordEncoder Encoder;
 
 ///////////// 로그인, 로그아웃 + 세션 유지, 파괴 /////////////////////
+
+    @RequestMapping(value = "/login", method = RequestMethod.GET)
+    public String Login(Model model,HttpSession session) {
+
+        if(session.getAttribute("user")==null)
+        return "login";
+        else return "main";
+    }
+
     @RequestMapping(value = "/process/login", method = RequestMethod.GET)
     public String ProcessLogin(Model model, HttpSession session, HttpServletRequest req) {
 
         Map<String, Object> data = new HashMap();
 
         user_schema User = UserRepository.findByid(req.getParameter("id"));
-        String encPassword=req.getParameter("password");
+        String encPassword=Encoder.encode(req.getParameter("password"));
 
         if(User.getPassword()==encPassword&&User.getAuth()==1)
         {
@@ -106,6 +115,7 @@ public class SpringController {
         String email=req.getParameter("email");
         String nickname=req.getParameter("nickname");
 
+        //회원 가입시 랜덤 토큰 생성, 부여 - > 이메일 인증을 위함.
         char[] charaters = {'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','0','1','2','3','4','5','6','7','8','9'};
         String hashedpassword=Encoder.encode(password);
         StringBuffer sb = new StringBuffer();
@@ -151,47 +161,5 @@ public class SpringController {
     }
 ///////////////////////////////////////////////////////////////////////////////
 
-    @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String Login(Model model) {
-
-        List<board> sample = BoardRepository.customfunc("HY");
-        Map<String, Object> data = new HashMap();
-        data.put("name", sample.get(0).getUsername());
-        data.put("contents", sample.get(0).getContents());
-        model.addAttribute("data", data);
-        return "login";
-    }
-
-    @RequestMapping(value = "/post", method = RequestMethod.POST)
-    public String Post(Model model, HttpServletRequest request, @RequestParam("userimage") List<MultipartFile> files) throws IOException {
-        try {
-            Map<String, Object> data = new HashMap();
-            data.put("id", request.getParameter("id"));
-            data.put("password", request.getParameter("password"));
-            model.addAttribute("data",data);
-
-            for(int i=0;i<files.size();i++){
-            String sourceFileName = files.get(i).getOriginalFilename();
-            String sourceFileNameExtension = FilenameUtils.getExtension(sourceFileName).toLowerCase();
-            File destinationFile;
-            String destinationFileName;
-            String fileUrl = "/Users/HY/IdeaProjects/demo/src/main/webapp/WEB-INF/uploadFiles/";
-
-                do {
-                    destinationFileName = RandomStringUtils.randomAlphanumeric(32) + "." + sourceFileNameExtension;
-                    destinationFile = new File(fileUrl + destinationFileName);
-                } while (destinationFile.exists());
-
-                destinationFile.getParentFile().mkdirs();
-                files.get(i).transferTo(destinationFile);
-
-            }
-            return "Post";
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return "Post";
-    }
 }
 

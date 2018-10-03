@@ -1,11 +1,14 @@
 package com.example.demo.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import java.util.Date;
 
 @Entity
+@Setter @Getter
 public class user_schema {
 
     @Id
@@ -15,6 +18,7 @@ public class user_schema {
     @Column(name ="nickname")
     String nickname;
 
+    @Setter @Getter
     @Column(name ="password")
     String password;
 
@@ -66,26 +70,6 @@ public class user_schema {
         this.nickname=nickname;
     }
 
-    public String getPassword()
-    {
-        return password;
-    }
-
-    public String getNickname()
-    {
-        return nickname;
-    }
-
-
-    public int getAuth()
-    {
-        return auth;
-    }
-
-    public String getTokken()
-    {
-        return tokken;
-    }
 
 
 }
