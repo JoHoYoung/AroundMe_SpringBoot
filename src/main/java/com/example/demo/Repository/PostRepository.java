@@ -13,6 +13,7 @@ public interface PostRepository extends JpaRepository<post_schema, Long> {
 
     post_schema findByid(@Param("id")String id);
 
-    List<post_schema> findAll(Pageable page);
+    void deleteByid(@Param("id")String id);
+
 
 }

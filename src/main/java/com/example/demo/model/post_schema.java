@@ -2,8 +2,6 @@ package com.example.demo.model;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.ibatis.annotations.One;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.persistence.*;
 import java.util.ArrayList;
@@ -15,18 +13,20 @@ import java.util.List;
 public class post_schema {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
 
-    @OneToMany(mappedBy = "post_schema")
+    @OneToMany
+    @JoinTable(name="comment_schema")
     @JoinColumn(name="belongto")
     private List<comment_schema> comment;
 
-    @OneToMany(mappedBy = "post_schema")
+    @OneToMany
+    @JoinTable(name="image_schema")
     @JoinColumn(name="belongto")
     private List<image_schema> image;
 
-    @OneToMany(mappedBy = "post_schema")
+    @OneToMany
+    @JoinTable(name="recommender_schema")
     @JoinColumn(name="belongto")
     private List<recommender_schema> recommender;
 
@@ -43,10 +43,10 @@ public class post_schema {
     @Column(name="star")
     int star;
 
-    @Column(name="createdat")
+    @Column(name="created_at")
     String createat;
 
-    @Column(name="updatedat")
+    @Column(name="updated_at")
     String updateat;
 
     @Column(name="commentcount")
@@ -58,7 +58,7 @@ public class post_schema {
     @Column(name="area")
     int area;
 
-    @Column(name="areagourp")
+    @Column(name="areagroup")
     int areagroup;
 
     public post_schema(String title,String content,String writer,int star,String createat,String updateat,int commentcount,int views,int area,int areagroup)
@@ -75,6 +75,7 @@ public class post_schema {
         this.areagroup=areagroup;
 
     }
+
     public void addComment(comment_schema data){
         if( comment == null ){
             comment = new ArrayList<comment_schema>();

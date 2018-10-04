@@ -4,7 +4,6 @@ import com.example.demo.Repository.ImageRepository;
 import com.example.demo.Repository.PostRepository;
 import com.example.demo.model.image_schema;
 import com.example.demo.model.post_schema;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -12,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,14 +23,11 @@ import org.springframework.web.servlet.view.RedirectView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
-import java.awt.*;
 import java.io.File;
+import java.util.*;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 
 @Controller
@@ -43,7 +40,7 @@ public class CrudController {
     @Autowired
     ImageRepository ImageRepository;
     @RequestMapping(value = "/post/create", method = RequestMethod.POST)
-    public ModelAndView CreatePost(Model model, HttpServletRequest req, HttpSession session, @RequestParam("userimage") List<MultipartFile> files) throws IOException {
+    public String CreatePost(Model model, HttpServletRequest req, HttpSession session, @RequestParam("userimage") List<MultipartFile> files) throws IOException {
         try {
             String paramtitle=req.getParameter("title");
             String paramcontent=req.getParameter("content");
@@ -51,9 +48,9 @@ public class CrudController {
             SimpleDateFormat dayTime = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
 
             String createdat = dayTime.format(new Date(time));
-            String writer=session.getAttribute("user").toString();
+            String writer="hoyoung";
 
-            post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,createdat,createdat,0,0,0,0));
+            post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,"","",0,0,0,0));
 
             for(int i=0;i<files.size();i++){
                 String sourceFileName = writer;
@@ -63,8 +60,11 @@ public class CrudController {
 
 
                 do {
-                    destinationFileName = RandomStringUtils.randomAlphanumeric(32) + "." + sourceFileName;
+                    destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
                     destinationFile = new File(fileUrl + destinationFileName);
+
+                    post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,"","",0,0,0,0));
+
                     image_schema image=ImageRepository.save(new image_schema(destinationFileName,parents.getId(),parents));
                     parents.addImage(image);
                 } while (destinationFile.exists());
@@ -74,12 +74,20 @@ public class CrudController {
 
             }
 
-            return new ModelAndView(new RedirectView("/post/"+parents.getId(),true));
+            return "login";
+//            return new ModelAndView(new RedirectView("/post/"+parents.getId(),true));
         } catch (Exception e) {
             e.printStackTrace();
-            return new ModelAndView(new RedirectView("/main",true));
+            return "login";
+  //          return new ModelAndView(new RedirectView("/main",true));
         }
 
+    }
+
+    @RequestMapping(value="/create", method=RequestMethod.GET)
+    public String create()
+    {
+        return "create";
     }
 
     @RequestMapping(value="/posts/:page",method = RequestMethod.GET)
@@ -104,14 +112,94 @@ public class CrudController {
         return "post";
     }
 
-    @RequestMapping(value="/post/delete/:postroot",method = RequestMethod.POST)
-    public String DeletePost(Model model,@PathVariable(name="postroot") String postroot)
+    @RequestMapping(value="/post/update/:postroot", method=RequestMethod.POST)
+    public ModelAndView UpdatePost(Model model,HttpSession session ,@PathVariable(name="postroot")String postroot, @RequestParam("userimage") List<MultipartFile> files, HttpServletRequest req) throws IOException
     {
 
-        post_schema post=PostRepository.findByid(postroot);
-        Map<String, Object> data=new HashMap();
-        data.put("data",post);
-        model.addAttribute("data",data);
+        String paramtitle=req.getParameter("title");
+        String paramcontent=req.getParameter("content");
+        String[] data = req.getParameterValues("todelete");
+
+
+        post_schema post = PostRepository.findByid("postroot");
+        List<image_schema> images=post.getImage(); //글에 속한 사진을 가져옴.
+
+        List<Integer> todelete=new ArrayList(Arrays.asList(data));
+        Dscending ascending = new Dscending();
+        Collections.sort(todelete,ascending);
+        for(int i=0;i<todelete.size();i++)
+        {
+            //서버에 저장된 이미지파일 삭제하는 부분
+
+            String path = "/Users/HY/IdeaProjects/demo/src/main/webapp/WEB-INF/uploadFiles/"; // 삭제할 파일의 경로
+            String filepath=path+images.get(todelete.get(i)).getImagename();
+
+            File file = new File(filepath);
+            if(file.exists()){
+                    file.delete();
+            }
+             // DB에 저장된 이미지 삭제하는 부분.
+            ImageRepository.deleteByImagename(images.get(todelete.get(i)).getImagename());
+            images.remove(todelete.get(i));
+        }
+
+        //Update하며 새로 업로드한 사진 저장하는 부분.
+        for(int i=0;i<files.size();i++){
+            String sourceFileName = session.getAttribute("user").toString();
+            File destinationFile;
+            String destinationFileName;
+            String fileUrl = "/Users/HY/IdeaProjects/demo/src/main/webapp/WEB-INF/uploadFiles/";
+
+
+            do {
+                destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
+                destinationFile = new File(fileUrl + destinationFileName);
+                image_schema image=ImageRepository.save(new image_schema(destinationFileName,post.getId(),post));
+                post.addImage(image);
+            } while (destinationFile.exists());
+
+            destinationFile.getParentFile().mkdirs();
+            files.get(i).transferTo(destinationFile);
+        }
+
+        post.setTitle(paramtitle);
+        post.setContent(paramcontent);
+        PostRepository.save(post);
+
+        return new ModelAndView(new RedirectView("/post/"+post.getId(),true));
+    }
+
+    @RequestMapping(value="/post/delete/:postroot",method = RequestMethod.POST)
+    public String DeletePost(Model model,@PathVariable(name="postroot")String postroot)
+    {
+
+        //db에서 사진테이블의 외래킬을 delete on cascade로 설정해 놓아서... 글만 지워도 사진 db는 지워질 것 같다.
+        post_schema post = PostRepository.findByid(postroot);
+        List<image_schema> images=post.getImage();
+
+        //서버에 저장된 이미지 파일들 삭제. 서버에 저장된건 이미지 파일밖에없다. 추천인, 댓글은 cascade설정때문에 post를 지우면 관련속성은 모두 지워진다.
+        for(int i=0;i<images.size();i++)
+        {
+            String path = "/Users/HY/IdeaProjects/demo/src/main/webapp/WEB-INF/uploadFiles/";
+            String filepath=path+images.get(i).getImagename();
+
+            File file = new File(filepath);
+            if(file.exists()){
+                file.delete();
+            }
+        }
+        PostRepository.delete(post);
+
         return "posts";
     }
+
+    class Dscending implements Comparator<Integer> {
+
+        @Override
+        public int compare(Integer o1, Integer o2) {
+            return o2.compareTo(o1);
+        }
+    }
+
+
 }

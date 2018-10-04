@@ -1,0 +1,115 @@
+
+<base href="/">
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<link rel="stylesheet" type="text/css" th:href="@{/css/common.css}">
+<link rel="stylesheet" type="text/css" th:href="@{/css/Signup.css}">
+<head>
+ <meta charset="UTF-8">
+    <title>글 작성</title>
+    <style>
+        input[type="file"] {
+            display: block;
+        }
+
+        .imageThumb {
+            max-height: 100px;
+
+        }
+
+        .pip {
+            display: inline-block;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            if (window.File && window.FileList && window.FileReader) {
+                $("#files").on("change", function(e) {
+                    var files = e.target.files,
+                        filesLength = files.length;
+                    for (var i = 0; i < filesLength; i++) {
+                        var f = files[i]
+                        var fileReader = new FileReader();
+                        fileReader.onload = (function(e) {
+                            var file = e.target;
+                            $("<div id=\"preview\">"+"<span class=\"pip\">" +
+                                "<img class=\"imageThumb\" src=\"" + e.target.result + "\" title=\"" + "목록에서 제거" + "\"/>" +
+                                "</span>"+"<span class=\"cover\">"+"</span>"+"</div>").insertAfter("#uptarget");
+                            $("#preview").click(function() {
+                                $(this).remove();
+                            });
+                        });
+                        fileReader.readAsDataURL(f);
+                    }
+                });
+            } else {
+                alert("Your browser doesn't support to File API")
+            }
+        });
+
+    </script>
+</head>
+
+<body>
+<div class="contain">
+    <div class="main">
+        <% include ../views/leftside%>
+        <div id="contents">
+            <div class="conwrap">
+                <div class="conhead">
+                    <h3 class=loc_title>게시글 작성</h3>
+                </div>
+                <p id="areaerror">
+                </p>
+                <form autocomplete="off" method="post" action="/post/create" enctype="multipart/form-data" onsubmit="return validation();">
+                    <table>
+                        <tr id="posttitle">
+                            <td class="box"><input type="text" name="title" id ="title" placeholder="제목" /></td>
+                        </tr>
+
+                        <tr id="postcontent">
+                            <td class="box"><textarea name="content" id="content" placeholder="내용"></textarea></td>
+                        </tr>
+                    </table>
+                    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+                    <div class="uploadform">
+                        <input class="upload" type='file' id='files' name='userimage' multiple='multiple'>
+                        <div class="uploadimg" id="uptarget"><img th:src="@{/images/upload.png}" width="25px" height="25px"></div>
+                    </div>
+
+                    <div class="submit">
+                        <input type="submit" value="글 작성하기" class="text">
+                    </div>
+
+                </form>
+                <script>
+
+                    document.getElementById("title").value = '';
+                    document.getElementById("content").value = '';
+                    function validation()
+                    {
+                        if(document.getElementById("title").value =='')
+                        {
+                            document.getElementById("areaerror").innerHTML = "제목을 입력해 주세요";
+                            console.log("실패");
+                            return false;
+                        }
+                        if(document.getElementById("content").value =='')
+                        {
+                            document.getElementById("areaerror").innerHTML = "내용을 입력해 주세요";
+                            console.log("실패");
+                            return false;
+                        }
+
+                        return true;
+                    }
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+
+
+</html>
