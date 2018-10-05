@@ -11,7 +11,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -52,6 +51,7 @@ public class CrudController {
 
             post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,"","",0,0,0,0));
 
+            System.out.println(parents.getId());
             for(int i=0;i<files.size();i++){
                 String sourceFileName = writer;
                 File destinationFile;
@@ -63,9 +63,8 @@ public class CrudController {
                     destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
                     destinationFile = new File(fileUrl + destinationFileName);
 
-                    post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,"","",0,0,0,0));
 
-                    image_schema image=ImageRepository.save(new image_schema(destinationFileName,parents.getId(),parents));
+                    image_schema image=ImageRepository.save(new image_schema(destinationFileName,parents.getId()));
                     parents.addImage(image);
                 } while (destinationFile.exists());
 
@@ -73,13 +72,16 @@ public class CrudController {
                 files.get(i).transferTo(destinationFile);
 
             }
+            PostRepository.save(parents);
+            List<image_schema> list = parents.getImage();
 
+            for( image_schema m : list ){
+                System.out.println(m.getImagename());
+            }
             return "login";
-//            return new ModelAndView(new RedirectView("/post/"+parents.getId(),true));
         } catch (Exception e) {
             e.printStackTrace();
             return "login";
-  //          return new ModelAndView(new RedirectView("/main",true));
         }
 
     }
@@ -101,19 +103,21 @@ public class CrudController {
         return "post";
     }
 
-    @RequestMapping(value="/post/:postroot",method = RequestMethod.GET)
-    public String ReadPost(Model model,@PathVariable(name="postroot") String postroot)
+    @RequestMapping(value="/post/{postroot}",method = RequestMethod.GET)
+    public String ReadPost(Model model,@PathVariable(name="postroot") int postroot)
     {
 
+        System.out.println(postroot);
         post_schema post=PostRepository.findByid(postroot);
         Map<String, Object> data=new HashMap();
-        data.put("data",post);
+        System.out.println(post.getImage().get(0).getImagename());
+        data.put("data",post.getId());
         model.addAttribute("data",data);
         return "post";
     }
 
     @RequestMapping(value="/post/update/:postroot", method=RequestMethod.POST)
-    public ModelAndView UpdatePost(Model model,HttpSession session ,@PathVariable(name="postroot")String postroot, @RequestParam("userimage") List<MultipartFile> files, HttpServletRequest req) throws IOException
+    public ModelAndView UpdatePost(Model model,HttpSession session ,@PathVariable(name="postroot")int postroot, @RequestParam("userimage") List<MultipartFile> files, HttpServletRequest req) throws IOException
     {
 
         String paramtitle=req.getParameter("title");
@@ -121,7 +125,7 @@ public class CrudController {
         String[] data = req.getParameterValues("todelete");
 
 
-        post_schema post = PostRepository.findByid("postroot");
+        post_schema post = PostRepository.findByid(postroot);
         List<image_schema> images=post.getImage(); //글에 속한 사진을 가져옴.
 
         List<Integer> todelete=new ArrayList(Arrays.asList(data));
@@ -154,7 +158,7 @@ public class CrudController {
             do {
                 destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
                 destinationFile = new File(fileUrl + destinationFileName);
-                image_schema image=ImageRepository.save(new image_schema(destinationFileName,post.getId(),post));
+                image_schema image=ImageRepository.save(new image_schema(destinationFileName,post.getId()));
                 post.addImage(image);
             } while (destinationFile.exists());
 
@@ -170,7 +174,7 @@ public class CrudController {
     }
 
     @RequestMapping(value="/post/delete/:postroot",method = RequestMethod.POST)
-    public String DeletePost(Model model,@PathVariable(name="postroot")String postroot)
+    public String DeletePost(Model model,@PathVariable(name="postroot")int postroot)
     {
 
         //db에서 사진테이블의 외래킬을 delete on cascade로 설정해 놓아서... 글만 지워도 사진 db는 지워질 것 같다.

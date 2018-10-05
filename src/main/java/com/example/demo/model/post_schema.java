@@ -13,22 +13,19 @@ import java.util.List;
 public class post_schema {
 
     @Id
+    @Column(name="id")
     private int id;
 
-    @OneToMany
-    @JoinTable(name="comment_schema")
-    @JoinColumn(name="belongto")
-    private List<comment_schema> comment;
+//    @OneToMany
+//    private List<comment_schema> comment;
 
-    @OneToMany
-    @JoinTable(name="image_schema")
+    @OneToMany(fetch=FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumn(name="belongto")
     private List<image_schema> image;
 
-    @OneToMany
-    @JoinTable(name="recommender_schema")
-    @JoinColumn(name="belongto")
-    private List<recommender_schema> recommender;
+//    @OneToMany
+//    @JoinColumn(name="id")
+//    private List<recommender_schema> recommender;
 
 
     @Column(name="title")
@@ -61,6 +58,11 @@ public class post_schema {
     @Column(name="areagroup")
     int areagroup;
 
+    public post_schema()
+    {
+
+    }
+
     public post_schema(String title,String content,String writer,int star,String createat,String updateat,int commentcount,int views,int area,int areagroup)
     {
         this.title=title;
@@ -75,13 +77,13 @@ public class post_schema {
         this.areagroup=areagroup;
 
     }
-
-    public void addComment(comment_schema data){
-        if( comment == null ){
-            comment = new ArrayList<comment_schema>();
-        }
-        comment.add(data);
-    }
+//
+//    public void addComment(comment_schema data){
+//        if( comment == null ){
+//            comment = new ArrayList<comment_schema>();
+//        }
+//        comment.add(data);
+//    }
 
     public void addImage(image_schema data){
         if( image == null ){
@@ -90,12 +92,12 @@ public class post_schema {
         image.add(data);
     }
 
-    public void addRecommender(recommender_schema data){
-        if( recommender == null ){
-            recommender = new ArrayList<recommender_schema>();
-        }
-        recommender.add(data);
-    }
+//    public void addRecommender(recommender_schema data){
+//        if( recommender == null ){
+//            recommender = new ArrayList<recommender_schema>();
+//        }
+//        recommender.add(data);
+//    }
 
 
 }
