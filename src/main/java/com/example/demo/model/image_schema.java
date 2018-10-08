@@ -13,13 +13,6 @@ public class image_schema {
     @Column(name="imagename")
     String imagename;
 
-//    @ManyToOne(targetEntity = post_schema.class,fetch = FetchType.LAZY)
-//    @JoinColumn(name="id")
-//    post_schema post;
-
-    //@Column(name="belongto")
-//    @ManyToOne(targetEntity = post_schema.class,fetch = FetchType.LAZY)
-//    @JoinColumn(referencedColumnName = "id",name="belongto")
 
     int belongto;
 
@@ -28,11 +21,9 @@ public class image_schema {
         this.imagename="kk";
     }
 
-    public image_schema(String imagename,int belongto)
+    public image_schema(String imagename)
     {
         this.imagename=imagename;
-        //this.post=post;
-        this.belongto=belongto;
 
     }
 

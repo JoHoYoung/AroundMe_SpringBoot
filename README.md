@@ -338,3 +338,44 @@ class Ascending implements Comparator<Integer> {
  
  #### 4. JPA에 대한 공부가 부족하다
  > 몇시간동안 제자리걸음을 한것 같다. 결과도 많이 없고 해결도 하지 못했다. 몇시간 동안 쳇바퀴를 돌았다. 정말 진빠진다. 제대로 공부해서 꼭 성공적으로 구현해야 겠다.
+ 
+  ## 2018.10.04 Developing Note
+  * * *
+  
+  #### 1. image_schema table에 post_schema.id 정상적으로 할당 성공.
+  > 역시 JPA를 몰라서 삽질하고 오래 걸렸던 것이었다. 
+```
+IDENTITY : 기본 키 생성을 데이터베이스에 위임하는 방법 (데이터베이스에 의존적)
+- 주로 MySQL, PostgresSQL, SQL Server, DB2에서 사용합니다.
+SEQUENCE : 데이터베이스 시퀀스를 사용해서 기본 키를 할당하는 방법 (데이터베이스에 의존적)
+- 주로 시퀀스를 지원하는 Oracle, PostgresSQL, DB2, H2에서 사용합니다. 
+- @SequenceGenerator를 사용하여 시퀀스 생성기를 등록하고, 실제 데이터베이스의 생성될 시퀀스이름을 지정해줘야 합니다.
+TABLE : 키 생성 테이블을 사용하는 방법
+- 키 생성 전용 테이블을 하나 만들고 여기에 이름과 값으로 사용할 컬럼을 만드는 방법입니다.
+- 테이블을 사용하므로, 데이터베이스 벤더에 상관없이 모든 데이터베이스에 적용이 가능합니다.
+AUTO : 데이터베이스 벤더에 의존하지 않고, 데이터베이스는 기본키를 할당하는 벙법
+- 데이터베이스에 따라서 IDENTITY, SEQUENCE, TABLE 방법 중 하나를 자동으로 선택해주는 방법입니다.
+- 예를들어, Oracle일 경우 SEQUENCE를 자동으로 선택해서 사용합니다. 따라서, 데이터베이스를 변경해도 코드를 수정할 필요가 없습니다.
+```
+> id부분을 GenerationType.AUTO로 지정하니 계속 에러가나서, 삭제했고 삭제하니 계속 0으로 할당되었다. 하지만 나는 JPA로 테이블을 만드는 것이 아닌 mysql콘솔에서 기본키를 만들었기 때문에 기본키
+할당을 데이터베이스에 위임하는 방식이다. IDENTITY로 설정하니 에러없이 잘 돌아갔다. 해결해서 기쁘다.
+
+#### 2. 글 Read 처리 : 글에대한 정보들, 그속의 사진에대한 정보들을 따로 보낼 필요 없이 통째로 보내면 처리 가능하다.
+> nodejs 와 똑같이 하면 된다.
+
+#### 3. 외래키 제약조건 삭제했으므로 delete부분 수정
+> JPA에서 제약조건 관련 어노테이션을 설정하면 되는데, 그걸 몰라서 예전에 on delete cascade 제약조건을 삭제하였다. Delete부분 컨트롤러를 수정하여 이미지도 하나하나 삭제해 준다.
+
+#### 4. 게시판 화면에서 10개씩 보여주기 위한 paging
+```
+@RequestMapping(value="/posts/{page}",method = RequestMethod.GET)
+    public String ReadPosts(Model model,@PathVariable(name="page") int page)
+    {
+        PageRequest PageRequest=new PageRequest(page-1,10,Sort.by(Sort.Direction.DESC,"id"));
+        Page<post_schema> posts=PostRepository.findAll(PageRequest);
+        Map<String, Object> data=new HashMap();
+        data.put("data",posts);
+        model.addAttribute("data",data);
+        return "posts";
+    }
+```

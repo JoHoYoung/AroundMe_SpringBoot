@@ -1,9 +1,13 @@
 package com.example.demo.controller;
 
+import com.example.demo.Repository.CommentRepository;
 import com.example.demo.Repository.ImageRepository;
 import com.example.demo.Repository.PostRepository;
+import com.example.demo.Repository.RecommenderRepository;
+import com.example.demo.model.comment_schema;
 import com.example.demo.model.image_schema;
 import com.example.demo.model.post_schema;
+import com.example.demo.model.recommender_schema;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -31,6 +35,7 @@ import java.util.List;
 
 @Controller
 @EnableAutoConfiguration
+@SuppressWarnings("Duplicates")
 public class CrudController {
 
     @Autowired
@@ -38,46 +43,51 @@ public class CrudController {
 
     @Autowired
     ImageRepository ImageRepository;
+
+    @Autowired
+    CommentRepository CommentRepository;
+
+    @Autowired
+    RecommenderRepository RecommenderRepository;
+
+    public String Gettime()
+    {
+        long time = System.currentTimeMillis();
+        SimpleDateFormat dayTime = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+        return dayTime.format(new Date(time));
+
+    }
+    ///////////////////---------CRUD-------------////////////////////////////////
     @RequestMapping(value = "/post/create", method = RequestMethod.POST)
     public String CreatePost(Model model, HttpServletRequest req, HttpSession session, @RequestParam("userimage") List<MultipartFile> files) throws IOException {
         try {
             String paramtitle=req.getParameter("title");
             String paramcontent=req.getParameter("content");
-            long time = System.currentTimeMillis();
-            SimpleDateFormat dayTime = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
 
-            String createdat = dayTime.format(new Date(time));
+            String createdat = Gettime();
             String writer="hoyoung";
 
-            post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,"","",0,0,0,0));
+            post_schema parents = PostRepository.save(new post_schema(paramtitle,paramcontent,writer,0,createdat,createdat,0,0,0,0));
 
             System.out.println(parents.getId());
             for(int i=0;i<files.size();i++){
                 String sourceFileName = writer;
                 File destinationFile;
-                String destinationFileName;
+                String destinationFilename;
                 String fileUrl = "/Users/HY/IdeaProjects/demo/src/main/webapp/WEB-INF/uploadFiles/";
 
-
-                do {
-                    destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
-                    destinationFile = new File(fileUrl + destinationFileName);
-
-
-                    image_schema image=ImageRepository.save(new image_schema(destinationFileName,parents.getId()));
+                 do {
+                    destinationFilename = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
+                    destinationFile = new File(fileUrl + destinationFilename);
+                    image_schema image=ImageRepository.save(new image_schema(destinationFilename));
                     parents.addImage(image);
                 } while (destinationFile.exists());
 
                 destinationFile.getParentFile().mkdirs();
                 files.get(i).transferTo(destinationFile);
-
             }
+
             PostRepository.save(parents);
-            List<image_schema> list = parents.getImage();
-
-            for( image_schema m : list ){
-                System.out.println(m.getImagename());
-            }
             return "login";
         } catch (Exception e) {
             e.printStackTrace();
@@ -92,28 +102,47 @@ public class CrudController {
         return "create";
     }
 
-    @RequestMapping(value="/posts/:page",method = RequestMethod.GET)
-    public String ReadPosts(Model model,@PathVariable(name="page") String page)
+    @RequestMapping(value="/posts/{page}",method = RequestMethod.GET)
+    public String ReadPosts(Model model,@PathVariable(name="page") int page)
     {
-
-        Page<post_schema> posts=PostRepository.findAll(new PageRequest(0,10,Sort.by(Sort.Direction.DESC,"create_at")));
+        PageRequest PageRequest=new PageRequest(page-1,10,Sort.by(Sort.Direction.DESC,"id"));
+        Page<post_schema> posts=PostRepository.findAll(PageRequest);
         Map<String, Object> data=new HashMap();
         data.put("data",posts);
         model.addAttribute("data",data);
-        return "post";
+        return "posts";
     }
 
     @RequestMapping(value="/post/{postroot}",method = RequestMethod.GET)
-    public String ReadPost(Model model,@PathVariable(name="postroot") int postroot)
+    public String ReadPost(Model model,HttpSession session,@PathVariable(name="postroot") int postroot)
     {
 
-        System.out.println(postroot);
         post_schema post=PostRepository.findByid(postroot);
+        post.setViews(post.getViews()+1);
+        PostRepository.save(post);
         Map<String, Object> data=new HashMap();
-        System.out.println(post.getImage().get(0).getImagename());
-        data.put("data",post.getId());
+
+        if(session.getAttribute("user").toString()==null)
+        {
+            model.addAttribute("islogin",0);
+        }
+        else {
+            model.addAttribute("islogin",1);
+            recommender_schema recommender = RecommenderRepository.findByBelongtoAndUser(postroot,session.getAttribute("user").toString());
+
+            if(recommender==null)
+            {
+                model.addAttribute("canrecommend",1);
+            }
+            else {
+                model.addAttribute("canrecommend", -1);
+            }
+        }
+
+        data.put("data",post);
         model.addAttribute("data",data);
         return "post";
+
     }
 
     @RequestMapping(value="/post/update/:postroot", method=RequestMethod.POST)
@@ -158,7 +187,7 @@ public class CrudController {
             do {
                 destinationFileName = RandomStringUtils.randomAlphanumeric(32) + sourceFileName;
                 destinationFile = new File(fileUrl + destinationFileName);
-                image_schema image=ImageRepository.save(new image_schema(destinationFileName,post.getId()));
+                image_schema image=ImageRepository.save(new image_schema(destinationFileName));
                 post.addImage(image);
             } while (destinationFile.exists());
 
@@ -166,8 +195,10 @@ public class CrudController {
             files.get(i).transferTo(destinationFile);
         }
 
+
         post.setTitle(paramtitle);
         post.setContent(paramcontent);
+        post.setUpdateat(Gettime());
         PostRepository.save(post);
 
         return new ModelAndView(new RedirectView("/post/"+post.getId(),true));
@@ -191,10 +222,79 @@ public class CrudController {
             if(file.exists()){
                 file.delete();
             }
+            ImageRepository.delete(images.get(i));
         }
         PostRepository.delete(post);
 
         return "posts";
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    /////////////////////----댓글 처리 -----------/////////////////////////////////////////////
+
+    @RequestMapping(value="/post/{postroot}/addcomment", method=RequestMethod.POST)
+    public ModelAndView AddComment(Model model,HttpSession session,@PathVariable(name="postroot")int postroot,HttpServletRequest req)
+    {
+        String paramcontent=req.getParameter("content");
+        post_schema post=PostRepository.findByid(postroot);
+        comment_schema comment = CommentRepository.save(new comment_schema(paramcontent,session.getAttribute("user").toString(),Gettime()));
+        post.addComment(comment);
+        PostRepository.save(post);
+
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot),true));
+    }
+
+    @RequestMapping(value = "/post/{postroot}/deletecomment/{commentroot}",method = RequestMethod.POST)
+    public ModelAndView DeleteComment(Model model,HttpSession session,@PathVariable(name="postroot")int postroot,@PathVariable(name="commentroot")int commentroot)
+    {
+
+        post_schema post=PostRepository.findByid(postroot);
+        List<comment_schema> comments=post.getComment();
+
+        for(int i=0;i<comments.size();i++)
+        {
+            if(comments.get(i).getId()==commentroot)
+            {
+                CommentRepository.delete(comments.get(i));
+                comments.remove(i);
+            }
+        }
+        PostRepository.save(post);
+
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////------------추천처리--------------------/////////////////////////////////////
+    @RequestMapping(value="/post/recommend/{postroot}", method=RequestMethod.GET)
+    public ModelAndView Recommend(Model model,HttpSession session,@PathVariable(name="postroot")int postroot)
+    {
+        recommender_schema recommender=RecommenderRepository.findByBelongtoAndUser(postroot,session.getAttribute("user").toString());
+        post_schema post=PostRepository.findByid(postroot);
+        if(recommender==null) //사용자가 이미 추천한 글이 아닐경우
+        {
+            recommender_schema newrecommender = RecommenderRepository.save(new recommender_schema(session.getAttribute("user").toString()));
+            post.addRecommender(newrecommender);
+            post.setStar(post.getStar()+1);
+            PostRepository.save(post);
+        }
+        else  //사용자가 이미 추천한 글일경우
+        {
+            for(int i=0;i<post.getRecommender().size();i++)
+            {
+                if(post.getRecommender().get(i).getUser()==session.getAttribute("user").toString())
+                {
+                    RecommenderRepository.delete(recommender); //추천인 튜플 삭제
+                    post.setStar(post.getStar()-1); // 추천수 1감소
+                    post.getRecommender().remove(i); // 해당 Collection 삭제.
+                    break;
+
+                }
+            }
+        }
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
     }
 
     class Dscending implements Comparator<Integer> {

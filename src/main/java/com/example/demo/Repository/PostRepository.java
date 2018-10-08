@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface PostRepository extends JpaRepository<post_schema, Long> {
 
+    List<post_schema> findAll();
+
     post_schema findByid(@Param("id")int id);
 
     void deleteByid(@Param("id")String id);

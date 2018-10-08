@@ -14,18 +14,20 @@ public class post_schema {
 
     @Id
     @Column(name="id")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-//    @OneToMany
-//    private List<comment_schema> comment;
+    @OneToMany(fetch=FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name="belongto")
+    private List<comment_schema> comment;
 
-    @OneToMany(fetch=FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(fetch=FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name="belongto")
     private List<image_schema> image;
 
-//    @OneToMany
-//    @JoinColumn(name="id")
-//    private List<recommender_schema> recommender;
+    @OneToMany(fetch=FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name="belongto")
+    private List<recommender_schema> recommender;
 
 
     @Column(name="title")
@@ -77,13 +79,13 @@ public class post_schema {
         this.areagroup=areagroup;
 
     }
-//
-//    public void addComment(comment_schema data){
-//        if( comment == null ){
-//            comment = new ArrayList<comment_schema>();
-//        }
-//        comment.add(data);
-//    }
+
+    public void addComment(comment_schema data){
+        if( comment == null ){
+            comment = new ArrayList<comment_schema>();
+        }
+        comment.add(data);
+    }
 
     public void addImage(image_schema data){
         if( image == null ){
@@ -92,12 +94,12 @@ public class post_schema {
         image.add(data);
     }
 
-//    public void addRecommender(recommender_schema data){
-//        if( recommender == null ){
-//            recommender = new ArrayList<recommender_schema>();
-//        }
-//        recommender.add(data);
-//    }
+    public void addRecommender(recommender_schema data){
+        if( recommender == null ){
+            recommender = new ArrayList<recommender_schema>();
+        }
+        recommender.add(data);
+    }
 
 
 }
