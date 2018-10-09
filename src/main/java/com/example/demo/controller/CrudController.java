@@ -4,16 +4,21 @@ import com.example.demo.Repository.CommentRepository;
 import com.example.demo.Repository.ImageRepository;
 import com.example.demo.Repository.PostRepository;
 import com.example.demo.Repository.RecommenderRepository;
-import com.example.demo.model.comment_schema;
-import com.example.demo.model.image_schema;
-import com.example.demo.model.post_schema;
-import com.example.demo.model.recommender_schema;
+import com.example.demo.model.*;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.social.connect.Connection;
+import org.springframework.social.facebook.api.Facebook;
+import org.springframework.social.facebook.api.impl.FacebookTemplate;
+import org.springframework.social.facebook.connect.FacebookConnectionFactory;
+import org.springframework.social.oauth2.AccessGrant;
+import org.springframework.social.oauth2.GrantType;
+import org.springframework.social.oauth2.OAuth2Operations;
+import org.springframework.social.oauth2.OAuth2Parameters;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +55,11 @@ public class CrudController {
     @Autowired
     RecommenderRepository RecommenderRepository;
 
+    @Autowired
+    private FacebookConnectionFactory connectionFactory;
+
+    @Autowired
+    private OAuth2Parameters oAuth2Parameters;
     public String Gettime()
     {
         long time = System.currentTimeMillis();
@@ -297,12 +307,74 @@ public class CrudController {
         return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////--------------검색처리---------------------/////////////////////////////////////////////////////
+
+    @RequestMapping(value = "/posts/search/{searchstr}/{page}", method=RequestMethod.GET)
+    public String Search(Model model,@PathVariable(name="searchstr")String searchstr,@PathVariable(name="page")int page)
+    {
+        PageRequest PageRequest=new PageRequest(page-1,10,Sort.by(Sort.Direction.DESC,"id"));
+        List<post_schema> posts=PostRepository.findByContentLikeOrTitleLike(searchstr,searchstr,PageRequest);
+        Map<String,Object> data=new HashMap();
+        data.put("data",posts);
+        model.addAttribute("data",data);
+        return "posts";
+    }
+
     class Dscending implements Comparator<Integer> {
 
         @Override
         public int compare(Integer o1, Integer o2) {
             return o2.compareTo(o1);
         }
+    }
+
+    ////------------------------Facebook OAuth-------------------------------------///////////////////////
+    @RequestMapping(value="/join",method = RequestMethod.GET)
+    public String join(Model model)
+    {
+        OAuth2Operations oauthOperations=connectionFactory.getOAuthOperations();
+        String facebook_url = oauthOperations.buildAuthenticateUrl(GrantType.AUTHORIZATION_CODE,oAuth2Parameters);
+        model.addAttribute("facebook_url",facebook_url);
+        System.out.println("/facebook"+facebook_url);
+
+        return "join";
+
+    }
+
+    @RequestMapping(value="/facebooklogin",method=RequestMethod.GET)
+    public String facebooklogin(Model model,@RequestParam String code) {
+
+        String redirectUri = oAuth2Parameters.getRedirectUri();
+        System.out.println("Redirect URI : " + redirectUri);
+        System.out.println("Code : " + code);
+
+        OAuth2Operations oauthOperations = connectionFactory.getOAuthOperations();
+        AccessGrant accessGrant = oauthOperations.exchangeForAccess(code, redirectUri, null);
+        String accessToken = accessGrant.getAccessToken();
+        System.out.println("AccessToken: " + accessToken);
+        Long expireTime = accessGrant.getExpireTime();
+
+
+        if (expireTime != null && expireTime < System.currentTimeMillis()) {
+            accessToken = accessGrant.getRefreshToken();
+        }
+
+
+        Connection<Facebook> connection = connectionFactory.createConnection(accessGrant);
+        Facebook facebook = connection == null ? new FacebookTemplate(accessToken) : connection.getApi();
+
+        String[] fields = {"id", "email", "name"};
+                user_schema userProfile = facebook.fetchObject("me", user_schema.class, fields);
+                System.out.println("유저이메일 : " + userProfile.getEmail());
+                System.out.println("유저 id : " + userProfile.getId());
+                System.out.println("유저 name : " + userProfile.getName());
+
+
+        model.addAttribute("data",userProfile);
+        System.out.println(facebook);
+        return "posts";
     }
 
 

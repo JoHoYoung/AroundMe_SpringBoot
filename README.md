@@ -339,7 +339,7 @@ class Ascending implements Comparator<Integer> {
  #### 4. JPA에 대한 공부가 부족하다
  > 몇시간동안 제자리걸음을 한것 같다. 결과도 많이 없고 해결도 하지 못했다. 몇시간 동안 쳇바퀴를 돌았다. 정말 진빠진다. 제대로 공부해서 꼭 성공적으로 구현해야 겠다.
  
-  ## 2018.10.04 Developing Note
+  ## 2018.10.05 Developing Note
   * * *
   
   #### 1. image_schema table에 post_schema.id 정상적으로 할당 성공.
@@ -379,3 +379,271 @@ AUTO : 데이터베이스 벤더에 의존하지 않고, 데이터베이스는 �
         return "posts";
     }
 ```
+
+  ## 2018.10.07 Developing Note
+  * * *
+  
+  #### 1. 댓글처리(댓글 작성, 삭제)
+  > 글을 찾고 글의 OneToMany속성에 댓글 추가.
+```
+
+    @RequestMapping(value="/post/{postroot}/addcomment", method=RequestMethod.POST)
+    public ModelAndView AddComment(Model model,HttpSession session,@PathVariable(name="postroot")int postroot,HttpServletRequest req)
+    {
+        String paramcontent=req.getParameter("content");
+        post_schema post=PostRepository.findByid(postroot);
+        comment_schema comment = CommentRepository.save(new comment_schema(paramcontent,session.getAttribute("user").toString(),Gettime()));
+        post.addComment(comment);
+        PostRepository.save(post);
+
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot),true));
+    }
+
+    @RequestMapping(value = "/post/{postroot}/deletecomment/{commentroot}",method = RequestMethod.POST)
+    public ModelAndView DeleteComment(Model model,HttpSession session,@PathVariable(name="postroot")int postroot,@PathVariable(name="commentroot")int commentroot)
+    {
+
+        post_schema post=PostRepository.findByid(postroot);
+        List<comment_schema> comments=post.getComment();
+
+        for(int i=0;i<comments.size();i++)
+        {
+            if(comments.get(i).getId()==commentroot)
+            {
+                CommentRepository.delete(comments.get(i));
+                comments.remove(i);
+            }
+        }
+        PostRepository.save(post);
+
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
+    }
+```
+> 댓글삭제시 글을 찾고 List Collection delete처리, 댓글 relation에서 해당 댓글튜플 삭제.
+
+  #### 2. 추천처리(중복추천 처리)
+  >해당글에 유저이름으로 추천한 정보가 있을경우 해당 글 추천수 1감소, 추천인 relation에서 해당 추천인 튜플 삭제.
+  없을 경우 추천수 1 증가, 추천인 relation에 글, 유저로 정보 추가.
+  ```
+      @RequestMapping(value="/post/recommend/{postroot}", method=RequestMethod.GET)
+      public ModelAndView Recommend(Model model,HttpSession session,@PathVariable(name="postroot")int postroot)
+      {
+          recommender_schema recommender=RecommenderRepository.findByBelongtoAndUser(postroot,session.getAttribute("user").toString());
+          post_schema post=PostRepository.findByid(postroot);
+          if(recommender==null) //사용자가 이미 추천한 글이 아닐경우
+          {
+              recommender_schema newrecommender = RecommenderRepository.save(new recommender_schema(session.getAttribute("user").toString()));
+              post.addRecommender(newrecommender);
+              post.setStar(post.getStar()+1);
+              PostRepository.save(post);
+          }
+          else  //사용자가 이미 추천한 글일경우
+          {
+              for(int i=0;i<post.getRecommender().size();i++)
+              {
+                  if(post.getRecommender().get(i).getUser()==session.getAttribute("user").toString())
+                  {
+                      RecommenderRepository.delete(recommender); //추천인 튜플 삭제
+                      post.setStar(post.getStar()-1); // 추천수 1감소
+                      post.getRecommender().remove(i); // 해당 Collection 삭제.
+                      break;
+  
+                  }
+              }
+          }
+          return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
+      }
+  ```
+  
+ ## 2018.10.09 Developing Note
+ * * *
+ 
+ #### 1. JPA 검색기능 
+ >처음에 JPA의 Like기능을 이용하여 검색을 시도하였다.
+ ```
+     List<post_schema> findByContentLikeOrTitleLike(String content,String title,PageRequest pageRequest);
+ ```
+ > 그러나 내가 생각하는 like와는 달랐다. 검색하려는 문자열의 일부를 포함한 검색결과가 아닌 문자열과 완전 똑같은 검색결과만 검색되었다. JPA의 Like가 정확히 무슨기능을
+하는지 잘 몰라서 일어난 착오 였던것 같다. 구글링을 하다가 결과를 얻지 못하고 @Query Anotation으로 정의하여 사용하였다.
+```
+    @Query("select a from post_schema a where a.content like %?1% or a.title like %?2%")
+    List<post_schema> findByContentLikeOrTitleLike(String content,String title,PageRequest pageRequest);
+```
+> 내가원하는 like검색 기능이 제대로 구현되었다.
+
+#### 2. Facebook OAuth에 관하여 (여러가지 설정에서부터 구현까지) 
+> 우선 xml에 필요한 의존성을 설정했다.
+```
+        <dependency>
+            <groupId>org.springframework.social</groupId>
+            <artifactId>spring-social-facebook</artifactId>
+            <version>2.0.3.RELEASE</version>
+        </dependency>
+```
+> 필요한 Bean등록 예전에도 있었던 문제인데 XML로 bean설정이 되지 않았다. 그래서 @Bean으로 등록하였다. xml bean설정이 왜 안되는지 알아봐야겠다.
+```
+  @Bean
+    public FacebookConnectionFactory connectionFactory()
+    {
+        FacebookConnectionFactory beanfact = new FacebookConnectionFactory("ID","Secret key");
+        return beanfact;
+    }
+
+    @Bean
+    public OAuth2Parameters oAuth2Parameters()
+    {
+        OAuth2Parameters auth=new OAuth2Parameters();
+        auth.setScope("email");
+        auth.setRedirectUri("https://localhost:3000/facebooklogin");
+        return auth;
+    }
+```
+>등록후 사용
+```
+ @RequestMapping(value="/join",method = RequestMethod.GET)
+    public String join(Model model)
+    {
+        OAuth2Operations oauthOperations=connectionFactory.getOAuthOperations();
+        String facebook_url = oauthOperations.buildAuthenticateUrl(GrantType.AUTHORIZATION_CODE,oAuth2Parameters);
+        model.addAttribute("facebook_url",facebook_url);
+        System.out.println("/facebook"+facebook_url);
+
+        return "join";
+
+    }
+    
+        @RequestMapping(value="/facebooklogin",method=RequestMethod.GET)
+        public String facebooklogin(Model model,@RequestParam String code) {
+    
+            String redirectUri = oAuth2Parameters.getRedirectUri();
+            System.out.println("Redirect URI : " + redirectUri);
+            System.out.println("Code : " + code);
+    
+            OAuth2Operations oauthOperations = connectionFactory.getOAuthOperations();
+            AccessGrant accessGrant = oauthOperations.exchangeForAccess(code, redirectUri, null);
+            String accessToken = accessGrant.getAccessToken();
+            System.out.println("AccessToken: " + accessToken);
+            Long expireTime = accessGrant.getExpireTime();
+    
+    
+            if (expireTime != null && expireTime < System.currentTimeMillis()) {
+                accessToken = accessGrant.getRefreshToken();
+            }
+    
+    
+            Connection<Facebook> connection = connectionFactory.createConnection(accessGrant);
+            Facebook facebook = connection == null ? new FacebookTemplate(accessToken) : connection.getApi();
+    
+            String[] fields = {"id", "email", "name"};
+                    user_schema userProfile = facebook.fetchObject("me", user_schema.class, fields);
+                    System.out.println("유저이메일 : " + userProfile.getEmail());
+                    System.out.println("유저 id : " + userProfile.getId());
+                    System.out.println("유저 name : " + userProfile.getName());
+    
+    
+            model.addAttribute("data",userProfile);
+            System.out.println(facebook);
+            return "posts";
+        }
+```
+> 페이스북 OAuth로그인 페이지로 이동하기 위한 링크를 생성한다.
+```
+    OAuth2Operations oauthOperations=connectionFactory.getOAuthOperations();
+        String facebook_url = oauthOperations.buildAuthenticateUrl(GrantType.AUTHORIZATION_CODE,oAuth2Parameters);
+```
+> 해당 링크를 프론트로 전달해, 클릭시 페이스북 OAuth로그인 페이지로 이동하게 설정한다. 로그인에 성공한 후, Bean에서 설정한 Redirection url로 이동하게된다.
+설정한 Url에 querystring이 추가돼서 direction되는데 그 문자열을 이용하여 로그인한 사용자 정보를 받아온다.
+```
+AccessGrant accessGrant = oauthOperations.exchangeForAccess(code, redirectUri, null);
+```
+>이 정보에는 토큰 만료시간도 포함되어있어 토큰이 만료되었을 경우 다시 생성하는 코드도 추가한다.
+```
+String accessToken = accessGrant.getAccessToken();
+        System.out.println("AccessToken: " + accessToken);
+        Long expireTime = accessGrant.getExpireTime();
+
+
+        if (expireTime != null && expireTime < System.currentTimeMillis()) {
+            accessToken = accessGrant.getRefreshToken();
+        }
+```
+> query스트링을 이용한 정보로, 페이스북과 연결, 정보를 가져온다.
+```
+        Connection<Facebook> connection = connectionFactory.createConnection(accessGrant);
+        Facebook facebook = connection == null ? new FacebookTemplate(accessToken) : connection.getApi();
+```
+>받아온 정보를 class로 fetch하여 사용한다.
+```
+        String[] fields = {"id", "email", "name"};
+                user_schema userProfile = facebook.fetchObject("me", user_schema.class, fields);
+                System.out.println("유저이메일 : " + userProfile.getEmail());
+                System.out.println("유저 id : " + userProfile.getId());
+                System.out.println("유저 name : " + userProfile.getName());
+
+
+```
+### *코드는 문제없이 작성했으나 실제로 사용할때의 문제 Https, SSl 설정
+> facebook oauth를 사용하려 했으나 https, ssl을 설정하지 않으면 보안상의 문제로 사용할 수 없다고 한다. 오랜 노력끝에 설정에 성공하였다.
+#### 1. Key Store 만들기
+```
+[Terminal]
+keytool -genkey -alias mykey -keyalg RSA -keystore mykey.jks
+
+키 저장소 비밀번호 입력:  
+새 비밀번호 다시 입력: 
+이름과 성을 입력하십시오.
+  [Unknown]:  jo
+조직 단위 이름을 입력하십시오.
+  [Unknown]:  hoyoung
+조직 이름을 입력하십시오.
+  [Unknown]:  hoyoung
+구/군/시 이름을 입력하십시오?
+  [Unknown]:  seoul
+시/도 이름을 입력하십시오.
+  [Unknown]:  seoul
+이 조직의 두 자리 국가 코드를 입력하십시오.
+  [Unknown]:  ko
+CN=jo, OU=hoyoung, O=hoyoung, L=seoul, ST=seoul, C=ko이(가) 맞습니까?
+  [아니오]:  y
+
+```
+
+#### 2. keystore에 저장한 인증서 추출
+```
+[Terminal]
+keytool -export -alias mykey -keystore mykey.jks -rfc -file mykey.cer
+키 저장소 비밀번호 입력:  
+인증서가 <mykey.cer> 파일에 저장되었습니다.
+JoHoYoungui-MacBook-Pro:~ HY$ keytool -import -alias mykey -file mykey.cer -keystore mykey.ts
+키 저장소 비밀번호 입력:  
+새 비밀번호 다시 입력: 
+소유자: CN=jo, OU=hoyoung, O=hoyoung, L=seoul, ST=seoul, C=ko
+발행자: CN=jo, OU=hoyoung, O=hoyoung, L=seoul, ST=seoul, C=ko
+일련 번호: 44b46483
+적합한 시작 날짜: Tue Oct 09 16:59:59 JST 2018, 종료 날짜: Mon Jan 07 16:59:59 JST 2019
+인증서 지문:
+	 
+확장: 
+
+#1: ObjectId:  Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [                                        ...L
+]
+]
+
+이 인증서를 신뢰합니까? [아니오]:  y
+인증서가 키 저장소에 추가되었습니다.
+
+```
+
+#### 3. 발행한 인증서로 application.properties에 ssl 설정.
+```
+server.ssl.enabled=true
+server.ssl.key-store=file:/Users/HY/IdeaProjects/demo/keys/mykey.jks
+server.ssl.key-store-password
+server.ssl.key-password
+server.ssl.key-alias=mykey
+server.ssl.trust-store=file:/Users/HY/IdeaProjects/demo/keys/mykey.ts 
+server.ssl.trust-store-password
+```
+>server.ssl.key-store=file:/Users/HY/IdeaProjects/demo/keys/mykey.jks 에서 앞에 file: 을 붙이지 않아 한참 고생하였다.

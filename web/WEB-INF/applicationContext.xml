@@ -19,4 +19,16 @@
         </property>
 
     </bean>
+
+    <bean id="connectionFactory"
+          class="org.springframework.social.facebook.connect.FacebookConnectionFactory">
+        <constructor-arg value="Client ID" />
+        <constructor-arg value="Secret Code" />
+    </bean>
+
+    <bean id="oAuth2Parameters"
+          class="org.springframework.social.oauth2.OAuth2Parameters">
+        <property name="scope" value="email" />
+        <property name="redirectUri" value="https://localhost:8443/Path..." />
+    </bean>
 </beans>
