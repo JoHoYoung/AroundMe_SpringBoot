@@ -268,11 +268,34 @@ public class CrudController {
             {
                 CommentRepository.delete(comments.get(i));
                 comments.remove(i);
+                break;
             }
         }
         PostRepository.save(post);
 
         return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
+    }
+
+    @RequestMapping(value = "/post/{postroot}/updatecomment/{commentroot}",method = RequestMethod.POST)
+    public ModelAndView UpdateComment(Model model,HttpSession session,@PathVariable(name="postroot")int postroot,@PathVariable(name="commentroot")int commentroot)
+    {
+
+        post_schema post = PostRepository.findByid(postroot);
+        List<comment_schema> comments=post.getComment();
+
+        for(int i=0;i<comments.size();i++)
+        {
+
+            if(comments.get(i).getId()==commentroot)
+            {
+                CommentRepository.delete(comments.get(i));
+                comments.remove(i);
+                break;
+            }
+        }
+        PostRepository.save(post);
+        return new ModelAndView(new RedirectView("/post/"+Integer.toString(postroot)));
+
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////
