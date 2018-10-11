@@ -647,3 +647,8 @@ server.ssl.trust-store=file:/Users/HY/IdeaProjects/demo/keys/mykey.ts
 server.ssl.trust-store-password
 ```
 >server.ssl.key-store=file:/Users/HY/IdeaProjects/demo/keys/mykey.jks 에서 앞에 file: 을 붙이지 않아 한참 고생하였다.
+
+ ## 2018.10.11 Developing Note
+ * * *
+ 
+ #### 1. 댓글 수정기능 추가
