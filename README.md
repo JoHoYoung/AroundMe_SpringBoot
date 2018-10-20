@@ -652,3 +652,10 @@ server.ssl.trust-store-password
  * * *
  
  #### 1. 댓글 수정기능 추가
+ 
+  ## 2018.10.14 Developing Note
+  * * *
+  
+ #### 1.  
+  spring.servlet.multipart.max-file-size=10MB
+  spring.servlet.multipart.max-request-size=10MB

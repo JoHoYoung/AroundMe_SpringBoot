@@ -132,7 +132,7 @@ public class CrudController {
         PostRepository.save(post);
         Map<String, Object> data=new HashMap();
 
-        if(session.getAttribute("user").toString()==null)
+        if(session.getAttribute("user")==null)
         {
             model.addAttribute("islogin",0);
         }
