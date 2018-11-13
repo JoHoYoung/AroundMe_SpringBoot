@@ -636,6 +636,7 @@ KeyIdentifier [                                        ...L
 
 ```
 
+
 #### 3. 발행한 인증서로 application.properties에 ssl 설정.
 ```
 server.ssl.enabled=true
