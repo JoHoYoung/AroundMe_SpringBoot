@@ -635,8 +635,6 @@ KeyIdentifier [                                        ...L
 인증서가 키 저장소에 추가되었습니다.
 
 ```
-
-
 #### 3. 발행한 인증서로 application.properties에 ssl 설정.
 ```
 server.ssl.enabled=true
